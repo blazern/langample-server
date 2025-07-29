@@ -48,8 +48,9 @@ def main() -> None:
     deploy_dir: Path = args.deploy_dir
     repo_url: str = args.repo_url
 
+    jar_file_name = "backend.jar"
     compose_dir = deploy_dir / "docker"
-    jar_dest = deploy_dir / "backend" / "backend.jar"
+    jar_dest = deploy_dir /  "docker" / "langample" / jar_file_name
     env_file = compose_dir / ".env"
 
     # 1. Fresh repo
@@ -68,8 +69,8 @@ def main() -> None:
     compose_dir.mkdir(parents=True, exist_ok=True)
     print(f"▶ Writing {env_file}")
     env_file.write_text(
-        f"HOST_PATH_JAR={os.path.relpath(jar_dest, compose_dir)}\n"
-        f"api_key_chatgpt={api_key_chatgpt}\n",
+        f"HOST_PATH_JAR={jar_file_name}\n"
+        f"API_KEY_CHATGPT={api_key_chatgpt}\n",
         encoding="utf-8",
     )
 
