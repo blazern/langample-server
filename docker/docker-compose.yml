@@ -3,9 +3,7 @@ services:
     build:
       context: ./langample
       args:
-          - PATH_JAR=/app/langample.jar
+        - JAR_FILE=backend.jar
     restart: unless-stopped
-    volumes:
-      - "${HOST_PATH_JAR:?path to jar must be set}:/app/langample.jar:ro"
     ports:
       - "8080:8080"
