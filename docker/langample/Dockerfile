@@ -1,12 +1,10 @@
 FROM eclipse-temurin:17-jre-alpine
 
-ARG PATH_JAR
+ARG JAR_FILE
 
-RUN test $PATH_JAR
-
-ENV PATH_JAR $PATH_JAR
+COPY ${JAR_FILE} /app/langample.jar
 
 # Ktor uses 8080 by default
 EXPOSE 8080
 
-CMD java -jar $PATH_JAR
+ENTRYPOINT ["java", "-jar", "/app/langample.jar"]
