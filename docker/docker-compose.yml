@@ -4,6 +4,7 @@ services:
       context: ./langample
       args:
         - JAR_FILE=${HOST_PATH_JAR:?path to jar must be set}
+        - API_KEY_CHATGPT=${API_KEY_CHATGPT:?ChatGPT API key must be set}
     restart: unless-stopped
     ports:
       - "8080:8080"
