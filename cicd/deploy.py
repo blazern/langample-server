@@ -17,13 +17,13 @@ def main() -> None:
     home: str = os.getenv("HOME")
     parser = argparse.ArgumentParser(
         prog="deploy.py",
-        description="Fresh-clone repo, drop fat JAR in place, write .env, restart compose.",
+        description="Fresh-clone repo, drop release binary in place, write .env, restart compose.",
     )
     parser.add_argument(
-        "--jar-path",
+        "--binary-path",
         required=True,
         type=Path,
-        help="Absolute path to the fat-JAR on the server",
+        help="Absolute path to the compiled backend binary on the server",
     )
     parser.add_argument(
         "--repo-url",
@@ -43,14 +43,16 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    jar_src: Path = args.jar_path.resolve()
+    binary_src: Path = args.binary_path.resolve()
+    if not binary_src.is_file():
+        raise Exception(f"{binary_src} is not a file")
     api_key_chatgpt: str = args.api_key_chatgpt
     deploy_dir: Path = args.deploy_dir
     repo_url: str = args.repo_url
 
-    jar_file_name = "backend.jar"
+    bin_file_name = "backend-bin"
     compose_dir = deploy_dir / "docker"
-    jar_dest = deploy_dir /  "docker" / "langample" / jar_file_name
+    bin_dest = compose_dir / "langample" / bin_file_name
     env_file = compose_dir / ".env"
 
     # 1. Fresh repo
@@ -60,16 +62,16 @@ def main() -> None:
     print("▶ Cloning repo")
     run(["git", "clone", "--depth", "1", repo_url, str(deploy_dir)])
 
-    # 2. Move fat-JAR
-    jar_dest.parent.mkdir(parents=True, exist_ok=True)
-    print("▶ Moving fat JAR")
-    shutil.move(str(jar_src), str(jar_dest))
+    # 2. move binary
+    bin_dest.parent.mkdir(parents=True, exist_ok=True)
+    print("▶ Moving release binary")
+    shutil.move(str(binary_src), str(bin_dest))
 
     # 3. Generate .env
     compose_dir.mkdir(parents=True, exist_ok=True)
     print(f"▶ Writing {env_file}")
     env_file.write_text(
-        f"HOST_PATH_JAR={jar_file_name}\n"
+        f"HOST_PATH_BIN={bin_file_name}\n"
         f"API_KEY_CHATGPT={api_key_chatgpt}\n",
         encoding="utf-8",
     )
