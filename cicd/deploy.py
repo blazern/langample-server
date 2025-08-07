@@ -4,6 +4,8 @@ import argparse
 import os
 import shutil
 import subprocess
+import json
+import time
 from pathlib import Path
 
 
@@ -90,7 +92,77 @@ def main() -> None:
         ],
         cwd=compose_dir,
     )
+
+    print("▶ Checking containers' health")
+    assert_containers_healthy(compose_dir)
+
     print("Deploy finished")
+
+
+def assert_containers_healthy(
+    compose_dir: Path,
+    timeout: int = 60,
+    stable_seconds: int = 15,
+) -> None:
+    """
+    Waits until every container is continuously healthy.
+    """
+    deadline = time.time() + timeout
+    stable_since: float | None = None
+
+    while time.time() < deadline:
+        ps = subprocess.run(
+            ["docker", "compose", "ps", "--format", "json"],
+            cwd=compose_dir,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        services_json = [
+            json.loads(line) for line in ps.stdout.splitlines() if line.strip()
+        ]
+
+        states = {
+            s["Name"]: (s["State"], s.get("Health", ""))
+            for s in services_json
+        }
+
+        exited_or_restart = [
+            n for n, (st, _) in states.items() if st in ("exited", "restarting")
+        ]
+        unhealthy = [
+            n for n, (_, health) in states.items() if health == "unhealthy"
+        ]
+
+        if exited_or_restart or unhealthy:
+            raise RuntimeError(
+                f"Faulty containers – exited/restarting: {exited_or_restart}, "
+                f"unhealthy: {unhealthy}"
+            )
+
+        all_ok = all(
+            st == "running" and (health in ("", "healthy"))
+            for st, health in states.values()
+        )
+
+        if all_ok:
+            if stable_since is None:
+                stable_since = time.time()
+            elif time.time() - stable_since >= stable_seconds:
+                print(
+                    f"✔ All containers running and healthy "
+                    f"(stable ≥ {stable_seconds}s)"
+                )
+                return
+        else:
+            stable_since = None
+
+        time.sleep(2)
+
+    raise TimeoutError(
+        f"Containers not healthy after {timeout}s: {states}"
+    )
 
 
 if __name__ == "__main__":
