@@ -1,9 +1,15 @@
-use clap::Parser;
+mod app_state;
+mod graphql;
+mod llm;
+mod model;
 
-use axum::{
-    routing::get,
-    Router,
-};
+use app_state::AppState;
+
+use async_graphql::http::GraphiQLSource;
+use async_graphql_axum::GraphQL;
+use axum::{Router, response::Html, routing::get};
+use clap::Parser;
+use graphql::schema::{AppSchema, build_schema};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -11,10 +17,20 @@ struct Args {
     api_key_chat_gpt: String,
 }
 
+async fn graphiql() -> Html<String> {
+    Html(GraphiQLSource::build().endpoint("/graphql").finish())
+}
+
 #[tokio::main]
 async fn main() {
-    let _args = Args::parse();
-    let app = Router::new().route("/", get(|| async { "Hello, World!" }));
+    let args = Args::parse();
+    let app_state = AppState::new(args.api_key_chat_gpt).expect("Failed to create app state");
+    let schema: AppSchema = build_schema(app_state.clone());
+
+    let app = Router::new()
+        .route("/graphiql", get(graphiql))
+        .route_service("/graphql", GraphQL::new(schema.clone()))
+        .with_state(app_state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     axum::serve(listener, app).await.unwrap();
