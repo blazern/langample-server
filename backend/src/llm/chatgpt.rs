@@ -1,7 +1,8 @@
+use super::chatgpt_structs::{ChatGPTRequest, ChatGPTResponse};
+use crate::util::truncate;
 use axum::http::StatusCode;
 use reqwest::Client;
-
-use super::chatgpt_structs::{ChatGPTRequest, ChatGPTResponse};
+use tracing::error;
 
 const DEFAULT_MODEL: &str = "gpt-4.1";
 
@@ -20,25 +21,34 @@ pub async fn request(
     };
 
     let url = url.unwrap_or("https://api.openai.com/v1/responses");
-    let res = http_client
+    let res = match http_client
         .post(url)
         .bearer_auth(chatgpt_key)
         .json(&request_body)
         .send()
         .await
-        .map_err(|e| (StatusCode::BAD_GATEWAY, e.to_string()))?;
+    {
+        Ok(r) => r,
+        Err(e) => {
+            error!(error = %e, "network error talking to upstream");
+            return Err((StatusCode::BAD_GATEWAY, e.to_string()));
+        }
+    };
 
-    if !res.status().is_success() {
-        return Err((
-            StatusCode::BAD_GATEWAY,
-            res.text().await.unwrap_or_default(),
-        ));
+    let status = res.status();
+    if !status.is_success() {
+        let body = res.text().await.unwrap_or_default();
+        error!(%status, body = %truncate(&body), "upstream non-success");
+        return Err((StatusCode::BAD_GATEWAY, body));
     }
 
-    let parsed: ChatGPTResponse = res
-        .json()
-        .await
-        .map_err(|e| (StatusCode::BAD_GATEWAY, e.to_string()))?;
+    let parsed: ChatGPTResponse = match res.json().await {
+        Ok(p) => p,
+        Err(e) => {
+            error!(error = %e, "failed to deserialize upstream response");
+            return Err((StatusCode::BAD_GATEWAY, e.to_string()));
+        }
+    };
 
     let answer = parsed
         .output
@@ -46,6 +56,7 @@ pub async fn request(
         .and_then(|o| o.content.first())
         .map(|c| c.text.clone())
         .ok_or_else(|| {
+            error!("missing output[0].content[0].text in upstream response");
             (
                 StatusCode::BAD_GATEWAY,
                 "missing `output[0].content[0].text` in upstream response".into(),

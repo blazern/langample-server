@@ -1,13 +1,13 @@
-use axum::http::StatusCode;
-use reqwest::Client;
-use serde::Deserialize;
-
+use super::chatgpt;
 use crate::model::{
     LexicalItemDetail, Sentence, TranslationsSet,
     lexical_item_detail::{Example, Explanation, Forms, Synonyms, WordTranslations},
 };
-
-use super::chatgpt;
+use crate::util::truncate;
+use axum::http::StatusCode;
+use reqwest::Client;
+use serde::Deserialize;
+use tracing::error;
 
 pub async fn request(
     http_client: &Client,
@@ -23,6 +23,7 @@ pub async fn request(
     let json = extract_json_object(&raw).unwrap_or_else(|| raw.trim().to_string());
 
     let resp: ChatGPTLexicalResponse = serde_json::from_str(&json).map_err(|e| {
+        error!(error = %e, sample = %truncate(&json), "invalid JSON from model");
         (
             StatusCode::BAD_GATEWAY,
             format!("invalid JSON from ChatGPT: {e}"),

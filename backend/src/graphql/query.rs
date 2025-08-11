@@ -42,7 +42,7 @@ impl Query {
         )
         .await
         .map_err(|(status, msg)| {
-            async_graphql::Error::new("Upstream LLM error").extend_with(|_, e| {
+            Error::new("Upstream LLM error").extend_with(|_, e| {
                 e.set("code", "UPSTREAM_LLM");
                 e.set("httpStatus", status.as_u16());
                 e.set("message", msg);
