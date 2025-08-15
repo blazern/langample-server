@@ -4,15 +4,28 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+tokio = { version = "1.47.1", features = ["macros", "rt-multi-thread"] }
+
+# HTTP
 axum = "0.8.4"
 async-graphql = { version = "7.0.17", features = ["tracing", "log"] }
 async-graphql-axum = "7.0.17"
-clap = { version = "4.5.42", features = ["derive"] }
-tokio = { version = "1.47.1", features = ["macros", "rt-multi-thread"] }
 reqwest = { version = "0.12.22", features = ["json"] }
+
+# CLI
+clap = { version = "4.5.42", features = ["derive"] }
+
+# Serialization
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.142"
+
+# SQL
+sqlx = { version = "0.8", features = [ "runtime-tokio", "sqlite" ] }
+
+# Tests
 mockito = "1.7.0"
+
+# Logging
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt", "json"] }
 tower-http = { version = "0.6.6", features = ["trace"] }

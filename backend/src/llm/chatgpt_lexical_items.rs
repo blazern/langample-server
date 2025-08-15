@@ -50,6 +50,7 @@ pub async fn request(
             .into_iter()
             .map(|t| Sentence::new(t, lang_to_iso3, &source))
             .collect(),
+        translations_qualities: None,
     };
     out.push(LexicalItemDetail::WordTranslations(WordTranslations {
         translations_set,
@@ -63,6 +64,7 @@ pub async fn request(
             .into_iter()
             .map(|s| Sentence::new(s, lang_from_iso3, &source))
             .collect(),
+        translations_qualities: None,
     };
     out.push(LexicalItemDetail::Synonyms(Synonyms {
         translations_set: synonyms_set,
@@ -74,6 +76,7 @@ pub async fn request(
             let examples_ts = TranslationsSet {
                 original: Sentence::new(lhs.trim(), lang_from_iso3, &source),
                 translations: vec![Sentence::new(rhs.trim(), lang_to_iso3, &source)],
+                translations_qualities: None,
             };
             out.push(LexicalItemDetail::Example(Example {
                 translations_set: examples_ts,
@@ -241,7 +244,7 @@ mod tests {
         let client = Client::new();
         let url = format!("{}/v1/responses", server.url());
 
-        let items = request_lexical(&client, "Hund", "de", "en", Some(&url))
+        let items = request_lexical(&client, "Hund", "deu", "eng", Some(&url))
             .await
             .expect("Ok");
 
@@ -249,26 +252,30 @@ mod tests {
 
         let expected = {
             let wt = TranslationsSet {
-                original: Sentence::new("Hund", "de", &source),
+                original: Sentence::new("Hund", "deu", &source),
                 translations: vec![
-                    Sentence::new("dog", "en", &source),
-                    Sentence::new("hound", "en", &source),
+                    Sentence::new("dog", "eng", &source),
+                    Sentence::new("hound", "eng", &source),
                 ],
+                translations_qualities: None,
             };
             let syn = TranslationsSet {
-                original: Sentence::new("Hund", "de", &source),
+                original: Sentence::new("Hund", "deu", &source),
                 translations: vec![
-                    Sentence::new("Hündin", "de", &source),
-                    Sentence::new("Köter", "de", &source),
+                    Sentence::new("Hündin", "deu", &source),
+                    Sentence::new("Köter", "deu", &source),
                 ],
+                translations_qualities: None,
             };
             let ex1 = TranslationsSet {
-                original: Sentence::new("Hund", "de", &source),
-                translations: vec![Sentence::new("Dog", "en", &source)],
+                original: Sentence::new("Hund", "deu", &source),
+                translations: vec![Sentence::new("Dog", "eng", &source)],
+                translations_qualities: None,
             };
             let ex2 = TranslationsSet {
-                original: Sentence::new("Mein Hund", "de", &source),
-                translations: vec![Sentence::new("My dog", "en", &source)],
+                original: Sentence::new("Mein Hund", "deu", &source),
+                translations: vec![Sentence::new("My dog", "eng", &source)],
+                translations_qualities: None,
             };
             vec![
                 LexicalItemDetail::Forms(Forms {
@@ -315,7 +322,7 @@ mod tests {
         let client = Client::new();
         let url = format!("{}/v1/responses", server.url());
 
-        let err = request_lexical(&client, "dog", "en", "de", Some(&url))
+        let err = request_lexical(&client, "dog", "eng", "deu", Some(&url))
             .await
             .expect_err("Err");
 
@@ -338,7 +345,7 @@ mod tests {
         let client = Client::new();
         let url = format!("{}/v1/responses", server.url());
 
-        let items = request_lexical(&client, "Hund", "de", "en", Some(&url))
+        let items = request_lexical(&client, "Hund", "deu", "eng", Some(&url))
             .await
             .expect("Ok");
         assert_ne!(Vec::<LexicalItemDetail>::new(), items);
@@ -357,7 +364,7 @@ mod tests {
         let client = Client::new();
         let url = format!("{}/v1/responses", server.url());
 
-        let err = request_lexical(&client, "any", "en", "de", Some(&url))
+        let err = request_lexical(&client, "any", "eng", "deu", Some(&url))
             .await
             .expect_err("Err");
 
@@ -372,7 +379,7 @@ mod tests {
 
         let client = Client::new();
 
-        let err = request_lexical(&client, "any", "en", "de", Some(&url))
+        let err = request_lexical(&client, "any", "eng", "deu", Some(&url))
             .await
             .expect_err("Err");
 

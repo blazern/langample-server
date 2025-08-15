@@ -38,6 +38,16 @@ def main() -> None:
         help="ChatGPT API key to insert into .env",
     )
     parser.add_argument(
+        "--graphql-parent-path",
+        required=True,
+        help="Parent path prefix for GraphQL endpoints (e.g. /langample/)",
+    )
+    parser.add_argument(
+        "--panlex-sqlite-db-path",
+        required=True,
+        help="Absolute path to panlex.sqlite on the server (e.g. ~/panlex.sqlite)",
+    )
+    parser.add_argument(
         "--deploy-dir",
         type=Path,
         default=Path(f"{home}/langample"),
@@ -49,6 +59,8 @@ def main() -> None:
     if not binary_src.is_file():
         raise Exception(f"{binary_src} is not a file")
     api_key_chatgpt: str = args.api_key_chatgpt
+    graphql_parent_path: str = args.graphql_parent_path
+    panlex_sqlite_db_path: Path = Path(args.panlex_sqlite_db_path).expanduser().resolve()
     deploy_dir: Path = args.deploy_dir
     repo_url: str = args.repo_url
 
@@ -74,7 +86,9 @@ def main() -> None:
     print(f"▶ Writing {env_file}")
     env_file.write_text(
         f"HOST_PATH_BIN={bin_file_name}\n"
-        f"API_KEY_CHATGPT={api_key_chatgpt}\n",
+        f"API_KEY_CHATGPT={api_key_chatgpt}\n"
+        f"GRAPHQL_PARENT_PATH={graphql_parent_path}\n"
+        f"PANLEX_SQLITE_DB_PATH={panlex_sqlite_db_path}\n",
         encoding="utf-8",
     )
 

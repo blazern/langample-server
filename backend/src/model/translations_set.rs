@@ -6,4 +6,6 @@ use async_graphql::SimpleObject;
 pub struct TranslationsSet {
     pub original: Sentence,
     pub translations: Vec<Sentence>,
+    /// Possible values are 0-9
+    pub translations_qualities: Option<Vec<i8>>,
 }

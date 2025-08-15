@@ -5,6 +5,10 @@ services:
       args:
         - BIN_FILE=${HOST_PATH_BIN:?path to the executable must be set}
         - API_KEY_CHATGPT=${API_KEY_CHATGPT:?ChatGPT API key must be set}
+        - GRAPHQL_PARENT_PATH=${GRAPHQL_PARENT_PATH:?GraphQL parent path must be set}
+        - PANLEX_SQLITE_DB_PATH=${PANLEX_SQLITE_DB_PATH:?Path to panlex.sqlite must be set}
     restart: unless-stopped
     ports:
       - "8080:8080"
+    volumes:
+      - ${PANLEX_SQLITE_DB_PATH}:${PANLEX_SQLITE_DB_PATH}:ro
