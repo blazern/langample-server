@@ -13,12 +13,12 @@ pub async fn request(
     http_client: &Client,
     chatgpt_key: &str,
     query: &str,
-    lang_from_iso2: &str,
-    lang_to_iso2: &str,
+    lang_from_iso3: &str,
+    lang_to_iso3: &str,
     model: Option<&str>,
     url: Option<&str>,
 ) -> Result<Vec<LexicalItemDetail>, (StatusCode, String)> {
-    let prompt = build_prompt(query, lang_from_iso2, lang_to_iso2);
+    let prompt = build_prompt(query, lang_from_iso3, lang_to_iso3);
     let raw = chatgpt::request(http_client, chatgpt_key, &prompt, model, url).await?;
     let json = extract_json_object(&raw).unwrap_or_else(|| raw.trim().to_string());
 
@@ -44,11 +44,11 @@ pub async fn request(
     }));
 
     let translations_set = TranslationsSet {
-        original: Sentence::new(query, lang_from_iso2, &source),
+        original: Sentence::new(query, lang_from_iso3, &source),
         translations: resp
             .translations
             .into_iter()
-            .map(|t| Sentence::new(t, lang_to_iso2, &source))
+            .map(|t| Sentence::new(t, lang_to_iso3, &source))
             .collect(),
     };
     out.push(LexicalItemDetail::WordTranslations(WordTranslations {
@@ -57,11 +57,11 @@ pub async fn request(
     }));
 
     let synonyms_set = TranslationsSet {
-        original: Sentence::new(query, lang_from_iso2, &source),
+        original: Sentence::new(query, lang_from_iso3, &source),
         translations: resp
             .synonyms
             .into_iter()
-            .map(|s| Sentence::new(s, lang_from_iso2, &source))
+            .map(|s| Sentence::new(s, lang_from_iso3, &source))
             .collect(),
     };
     out.push(LexicalItemDetail::Synonyms(Synonyms {
@@ -72,8 +72,8 @@ pub async fn request(
     for ex in resp.examples {
         if let Some((lhs, rhs)) = ex.split_once('|') {
             let examples_ts = TranslationsSet {
-                original: Sentence::new(lhs.trim(), lang_from_iso2, &source),
-                translations: vec![Sentence::new(rhs.trim(), lang_to_iso2, &source)],
+                original: Sentence::new(lhs.trim(), lang_from_iso3, &source),
+                translations: vec![Sentence::new(rhs.trim(), lang_to_iso3, &source)],
             };
             out.push(LexicalItemDetail::Example(Example {
                 translations_set: examples_ts,
@@ -95,7 +95,7 @@ struct ChatGPTLexicalResponse {
 }
 
 /// Prompt builder (adapted from your Android code).
-fn build_prompt(query: &str, lang_from_iso2: &str, lang_to_iso2: &str) -> String {
+fn build_prompt(query: &str, lang_from_iso3: &str, lang_to_iso3: &str) -> String {
     let forms_explanation = r#"
 if noun: article, singular form, plural form changes, e.g.:
 der Hund, -e
@@ -127,15 +127,15 @@ The JSON format must be exactly:
 }}
 
 Word to explain: {query}
-Source language (ISO-2): {lang_from_iso2}
-Target language (ISO-2): {lang_to_iso2}
+Source language (ISO-3): {lang_from_iso3}
+Target language (ISO-3): {lang_to_iso3}
 
 Placeholders:
 <FORMS>: {forms_explanation}
-<TRANSLATION>: a translation into lang {lang_to_iso2}
-<SYNONYM>: a synonym in lang {lang_from_iso2}
-<EXPLANATION_TARGET_LANG>: short (2-3 sentences) explanation of the word, in lang {lang_to_iso2}
-<EXAMPLE>: example sentence in lang {lang_from_iso2} | example sentence in lang {lang_to_iso2}
+<TRANSLATION>: a translation into lang {lang_to_iso3}
+<SYNONYM>: a synonym in lang {lang_from_iso3}
+<EXPLANATION_TARGET_LANG>: short (2-3 sentences) explanation of the word, in lang {lang_to_iso3}
+<EXAMPLE>: example sentence in lang {lang_from_iso3} | example sentence in lang {lang_to_iso3}
 The '|' is a required delimiter. Example sentences must be short. Translations and synonyms may contain 1-6 entries.
 "#
     )
@@ -211,16 +211,16 @@ mod tests {
     pub async fn request_lexical(
         http_client: &Client,
         query: &str,
-        lang_from_iso2: &str,
-        lang_to_iso2: &str,
+        lang_from_iso3: &str,
+        lang_to_iso3: &str,
         url: Option<&str>,
     ) -> Result<Vec<LexicalItemDetail>, (StatusCode, String)> {
         super::request(
             http_client,
             "key",
             query,
-            lang_from_iso2,
-            lang_to_iso2,
+            lang_from_iso3,
+            lang_to_iso3,
             None,
             url,
         )

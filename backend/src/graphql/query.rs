@@ -11,8 +11,8 @@ impl Query {
         &self,
         ctx: &Context<'_>,
         query: String,
-        lang_from_iso2: String,
-        lang_to_iso2: String,
+        lang_from_iso3: String,
+        lang_to_iso3: String,
     ) -> async_graphql::Result<Vec<LexicalItemDetail>> {
         let state = ctx.data::<AppState>()?;
 
@@ -26,8 +26,8 @@ impl Query {
                     .extend_with(|_, e| e.set("code", "BAD_USER_INPUT")),
             );
         }
-        if lang_from_iso2.len() != 2 || lang_to_iso2.len() != 2 {
-            return Err(Error::new("languages must be ISO-2 (2 letters)")
+        if lang_from_iso3.len() != 3 || lang_to_iso3.len() != 3 {
+            return Err(Error::new("languages must be ISO-3 (3 letters)")
                 .extend_with(|_, e| e.set("code", "BAD_USER_INPUT")));
         }
 
@@ -35,8 +35,8 @@ impl Query {
             state.http_client(),
             state.chatgpt_key(),
             query,
-            &lang_from_iso2,
-            &lang_to_iso2,
+            &lang_from_iso3,
+            &lang_to_iso3,
             None,
             None,
         )
