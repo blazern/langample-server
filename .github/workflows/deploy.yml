@@ -21,6 +21,12 @@ jobs:
           override: true
           profile: minimal
 
+      - name: Cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            backend -> target
+
       - name: Build backend (release)
         run: |
           cd backend
