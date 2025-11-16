@@ -4,20 +4,22 @@ mod llm;
 mod model;
 mod panlex;
 mod util;
+mod kaikki;
 
 use app_state::AppState;
 
 use async_graphql::http::GraphiQLSource;
 use async_graphql_axum::GraphQL;
-use axum::{Router, response::Html, routing::get};
+use axum::{response::Html, routing::get, Router};
 use clap::Parser;
-use graphql::schema::{AppSchema, build_schema};
+use graphql::schema::{build_schema, AppSchema};
 use sqlx::SqlitePool;
+use tower_http::cors::CorsLayer;
 use tower_http::trace::{
     DefaultMakeSpan, DefaultOnFailure, DefaultOnRequest, DefaultOnResponse, TraceLayer,
 };
 use tracing::Level;
-use tracing_subscriber::{EnvFilter, fmt};
+use tracing_subscriber::{fmt, EnvFilter};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -64,6 +66,7 @@ async fn main() {
     let app = Router::new()
         .route("/graphiql", get(|| graphiql(graphql_parent_path)))
         .route_service("/graphql", GraphQL::new(schema.clone()))
+        .route("/kaikki", get(kaikki::kaikki_proxy::kaikki_proxy))
         .with_state(app_state)
         .layer(
             TraceLayer::new_for_http()
