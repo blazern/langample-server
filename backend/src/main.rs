@@ -29,6 +29,10 @@ struct Args {
     api_key_chat_gpt: String,
     #[arg(long = "panlex-sqlite-db-path", required = true)]
     panlex_sqlite_db_path: String,
+    #[arg(long = "port", default_value = "8080")]
+    port: String,
+    #[arg(long = "cors-permissive", default_value_t = false)]
+    cors_permissive: bool,
 }
 
 async fn graphiql(graphql_parent_path: String) -> Html<String> {
@@ -76,6 +80,12 @@ async fn main() {
                 .on_failure(DefaultOnFailure::new().level(Level::INFO)),
         );
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
+    let app = if args.cors_permissive {
+        app.layer(CorsLayer::permissive())
+    } else {
+        app
+    };
+
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", args.port)).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
