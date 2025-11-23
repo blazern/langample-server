@@ -6,6 +6,7 @@ mod panlex;
 mod util;
 mod kaikki;
 mod tatoeba;
+mod wortschatz_leipzig;
 
 use app_state::AppState;
 
@@ -73,6 +74,10 @@ async fn main() {
         .route_service("/graphql", GraphQL::new(schema.clone()))
         .route("/kaikki", get(kaikki::kaikki_proxy::kaikki_proxy))
         .route("/tatoeba", get(tatoeba::tatoeba_proxy::tatoeba_proxy))
+        .route(
+            "/ws/sentences/{corpus}/sentences/{term}",
+            get(wortschatz_leipzig::wortschatz_leipzig_proxy::wortschatz_leipzig_proxy),
+        )
         .with_state(app_state)
         .layer(
             TraceLayer::new_for_http()
