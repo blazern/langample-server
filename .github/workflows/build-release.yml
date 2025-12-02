@@ -1,0 +1,60 @@
+name: build release
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: "1.88.0"
+          override: true
+          profile: minimal
+
+      - name: Cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            backend -> target
+
+      - name: Build backend (release)
+        run: |
+          cd backend
+          cargo build --package backend --bin backend --release
+          cd ..
+          # Ensure it exists
+          test -f ./backend/target/release/backend
+
+      - name: Generate timestamp tag
+        id: gen_tag
+        run: echo "tag=release-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+
+      - name: Create a GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.gen_tag.outputs.tag }}
+          release_name: "Backend release ${{ steps.gen_tag.outputs.tag }}"
+          draft: false
+          prerelease: false
+
+      - name: Upload backend binary as release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./backend/target/release/backend
+          asset_name: backend
+          asset_content_type: application/octet-stream
