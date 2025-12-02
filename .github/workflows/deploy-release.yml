@@ -1,8 +1,8 @@
-name: deploy
+name: deploy release
 
 on:
-  push:
-    branches: [ main ]
+  workflow_call:
+  workflow_dispatch:
 
 concurrency:
   group: deploy-release
@@ -11,29 +11,20 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: "1.88.0"
-          override: true
-          profile: minimal
+      - name: Prepare download directory
+        run: mkdir -p backend/target/release
 
-      - name: Cargo cache
-        uses: Swatinem/rust-cache@v2
+      - name: Download latest backend binary
+        uses: robinraju/release-downloader@v1
         with:
-          workspaces: |
-            backend -> target
-
-      - name: Build backend (release)
-        run: |
-          cd backend
-          cargo build --package backend --bin backend --release
-          cd ..
-          # Ensure it exists
-          test -f ./backend/target/release/backend
+          latest: true
+          fileName: backend
+          out-file-path: ./backend/target/release
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload backend binary and deploy script
         uses: appleboy/scp-action@v1.0.0
