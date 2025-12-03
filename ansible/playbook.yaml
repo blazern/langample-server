@@ -1,0 +1,66 @@
+- name: Set up server
+  hosts: myhosts
+  become: true
+
+  tasks:
+    - name: Check required variables
+      assert:
+        that:
+          - domain_name is defined
+        fail_msg: "You must provide all required variables"
+
+    - name: Update apt cache and upgrade
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Install base packages
+      apt:
+        name:
+          - git
+          - curl
+          - nginx
+        state: present
+
+    # - name: Disable default nginx site
+    #   file:
+    #     path: /etc/nginx/sites-enabled/default
+    #     state: absent
+    #   notify: Reload nginx
+
+    - name: Create nginx site config
+      copy:
+        dest: /etc/nginx/sites-available/app.conf
+        mode: '0644'
+        content: |
+          server {
+              listen 80;
+              listen [::]:80;
+
+              server_name {{ domain_name }};
+          }
+      notify: Reload nginx
+
+    - name: Enable nginx site
+      file:
+        src: /etc/nginx/sites-available/app.conf
+        dest: /etc/nginx/sites-enabled/app.conf
+        state: link
+      notify: Reload nginx
+
+    - name: Test nginx configuration
+      command: nginx -t
+      register: nginx_test
+      changed_when: false
+      failed_when: nginx_test.rc != 0
+
+    - name: Reload nginx after test
+      service:
+        name: nginx
+        state: reloaded
+
+  handlers:
+    - name: Reload nginx
+      service:
+        name: nginx
+        state: reloaded
