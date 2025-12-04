@@ -22,7 +22,15 @@
           - curl
           - nginx
           - snapd
+          - python3
+          - docker.io
         state: present
+
+    - name: Ensure Docker service is enabled and running
+      service:
+        name: docker
+        state: started
+        enabled: true
 
     - name: Remove OS-packaged certbot if present
       apt:
@@ -40,12 +48,6 @@
         src: /snap/bin/certbot
         dest: /usr/bin/certbot
         state: link
-
-    # - name: Disable default nginx site
-    #   file:
-    #     path: /etc/nginx/sites-enabled/default
-    #     state: absent
-    #   notify: Reload nginx
 
     - name: Create nginx site config
       copy:
