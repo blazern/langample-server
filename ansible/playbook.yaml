@@ -7,6 +7,7 @@
       assert:
         that:
           - domain_name is defined
+          - certbot_email is defined
         fail_msg: "You must provide all required variables"
 
     - name: Update apt cache and upgrade
@@ -20,7 +21,25 @@
           - git
           - curl
           - nginx
+          - snapd
         state: present
+
+    - name: Remove OS-packaged certbot if present
+      apt:
+        name: certbot
+        state: absent
+        purge: true
+
+    - name: Install certbot via snap
+      command: snap install --classic certbot
+      args:
+        creates: /snap/bin/certbot
+
+    - name: Ensure certbot command is available at /usr/bin/certbot
+      file:
+        src: /snap/bin/certbot
+        dest: /usr/bin/certbot
+        state: link
 
     # - name: Disable default nginx site
     #   file:
@@ -38,6 +57,11 @@
               listen [::]:80;
 
               server_name {{ domain_name }};
+
+              location / {
+                  root /var/www/html;
+                  index index.html;
+              }
           }
       notify: Reload nginx
 
@@ -54,10 +78,17 @@
       changed_when: false
       failed_when: nginx_test.rc != 0
 
-    - name: Reload nginx after test
-      service:
-        name: nginx
-        state: reloaded
+    - name: Obtain/renew certificate with certbot (nginx plugin)
+      command: >
+        certbot --nginx
+        -d {{ domain_name }}
+        --non-interactive
+        --agree-tos
+        --email {{ certbot_email }}
+
+    - name: Test certbot automatic renewal (dry run)
+      command: certbot renew --dry-run
+      changed_when: false
 
   handlers:
     - name: Reload nginx
