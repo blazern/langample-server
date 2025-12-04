@@ -8,12 +8,13 @@
         that:
           - domain_name is defined
           - certbot_email is defined
+          - panlex_db_url is defined
+          - panlex_sqlite_db_path is defined
         fail_msg: "You must provide all required variables"
 
     - name: Update apt cache and upgrade
       apt:
         update_cache: yes
-        upgrade: dist
 
     - name: Install base packages
       apt:
@@ -22,7 +23,67 @@
           - curl
           - nginx
           - snapd
+          - python3
+          - ca-certificates
         state: present
+
+    - name: Ensure PanLex DB directory exists
+      file:
+        path: "{{ panlex_sqlite_db_path | dirname }}"
+        state: directory
+        mode: '0755'
+
+    - name: Download PanLex DB if missing
+      get_url:
+        url: "{{ panlex_db_url }}"
+        dest: "{{ panlex_sqlite_db_path }}"
+        mode: '0644'
+        force: false
+        timeout: 3600 # big file, 1 hour
+
+    - name: Create directory for Docker keyrings
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Download Docker GPG key
+      get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+
+    - name: Add Docker apt repository
+      copy:
+        dest: /etc/apt/sources.list.d/docker.sources
+        mode: '0644'
+        content: |
+          Types: deb
+          URIs: https://download.docker.com/linux/ubuntu
+          Suites: {{ ansible_facts['lsb']['codename'] }}
+          Components: stable
+          Signed-By: /etc/apt/keyrings/docker.asc
+
+    - name: Install Docker Engine and plugins
+      apt:
+        update_cache: yes
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+
+    - name: Ensure Docker service is enabled and running
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Ensure Docker works
+      command: docker run --rm hello-world
+      changed_when: false
 
     - name: Remove OS-packaged certbot if present
       apt:
@@ -41,26 +102,37 @@
         dest: /usr/bin/certbot
         state: link
 
-    # - name: Disable default nginx site
-    #   file:
-    #     path: /etc/nginx/sites-enabled/default
-    #     state: absent
-    #   notify: Reload nginx
-
     - name: Create nginx site config
       copy:
         dest: /etc/nginx/sites-available/app.conf
         mode: '0644'
         content: |
+          upstream rust_backend {
+              # Docker is publishing 8080 on the host
+              server 127.0.0.1:8080;
+          }
+
           server {
               listen 80;
               listen [::]:80;
 
               server_name {{ domain_name }};
 
+              # Static site / landing page
               location / {
                   root /var/www/html;
                   index index.html;
+              }
+
+              # Rust backend exposed under /api/
+              location /api/ {
+                  proxy_pass         http://rust_backend;
+                  proxy_http_version 1.1;
+
+                  proxy_set_header   Host $host;
+                  proxy_set_header   X-Real-IP $remote_addr;
+                  proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header   X-Forwarded-Proto $scheme;
               }
           }
       notify: Reload nginx
