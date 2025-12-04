@@ -16,7 +16,12 @@ jobs:
     uses: ./.github/workflows/build-release.yml
     secrets: inherit
 
-  deploy:
+  ansible:
     needs: build
+    uses: ./.github/workflows/run-ansible.yml
+    secrets: inherit
+
+  deploy:
+    needs: ansible
     uses: ./.github/workflows/deploy-release.yml
     secrets: inherit

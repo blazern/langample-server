@@ -13,7 +13,6 @@
     - name: Update apt cache and upgrade
       apt:
         update_cache: yes
-        upgrade: dist
 
     - name: Install base packages
       apt:
@@ -22,7 +21,46 @@
           - curl
           - nginx
           - snapd
+          - python3
+          - ca-certificates
         state: present
+
+    - name: Create directory for Docker keyrings
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Download Docker GPG key
+      get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+
+    - name: Add Docker apt repository
+      copy:
+        dest: /etc/apt/sources.list.d/docker.sources
+        mode: '0644'
+        content: |
+          Types: deb
+          URIs: https://download.docker.com/linux/ubuntu
+          Suites: {{ ansible_facts['lsb']['codename'] }}
+          Components: stable
+          Signed-By: /etc/apt/keyrings/docker.asc
+
+    - name: Install Docker Engine and plugins
+      apt:
+        update_cache: yes
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+
+    - name: Ensure Docker works
+      command: docker run hello-world
 
     - name: Remove OS-packaged certbot if present
       apt:
@@ -40,12 +78,6 @@
         src: /snap/bin/certbot
         dest: /usr/bin/certbot
         state: link
-
-    # - name: Disable default nginx site
-    #   file:
-    #     path: /etc/nginx/sites-enabled/default
-    #     state: absent
-    #   notify: Reload nginx
 
     - name: Create nginx site config
       copy:
