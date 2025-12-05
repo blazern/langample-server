@@ -102,6 +102,14 @@
         dest: /usr/bin/certbot
         state: link
 
+    - name: Ensure KMP frontend directory exists
+      file:
+        path: /var/www/lexisoup-frontend
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+
     - name: Create nginx site config
       copy:
         dest: /etc/nginx/sites-available/app.conf
@@ -118,9 +126,13 @@
 
               server_name {{ domain_name }};
 
+              # KMP JS frontend at site root
               location / {
-                  root /var/www/html;
+                  root /var/www/lexisoup-frontend;
                   index index.html;
+
+                  # Helpful for SPA-style routing
+                  try_files $uri $uri/ /index.html;
               }
 
               # Rust backend under /api/
