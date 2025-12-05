@@ -1,11 +1,11 @@
-name: deploy release
+name: deploy rust
 
 on:
   workflow_call:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-release
+  group: deploy-rust
   cancel-in-progress: true
 
 jobs:

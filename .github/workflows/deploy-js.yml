@@ -1,0 +1,72 @@
+name: deploy js
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-js
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Prepare download directory
+        run: mkdir -p js-dist
+
+      - name: Download latest JS release from KMP repo
+        uses: robinraju/release-downloader@v1
+        with:
+          repository: blazern/langample
+          latest: true
+          fileName: js-dist.zip
+          out-file-path: ./js-dist
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload JS bundle to server
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_SSH_IP }}
+          username: ${{ secrets.SERVER_SSH_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: ./js-dist/js-dist.zip
+          target: /tmp/
+
+      - name: Deploy JS bundle on server
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.SERVER_SSH_IP }}
+          username: ${{ secrets.SERVER_SSH_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            set -euo pipefail
+
+            FRONTEND_DIR=/var/www/lexisoup-frontend
+            ZIP_PATH=/tmp/js-dist/js-dist.zip
+
+            # Ensure target directory exists
+            mkdir -p "$FRONTEND_DIR"
+
+            # Install unzip if missing
+            if ! command -v unzip >/dev/null 2>&1; then
+              apt-get update
+              apt-get install -y unzip
+            fi
+
+            # Clean existing contents to avoid conflicts
+            rm -rf "${FRONTEND_DIR:?}/"*
+
+            # Unpack new JS release
+            unzip -o "$ZIP_PATH" -d "$FRONTEND_DIR"
+
+            # Permissions for nginx (assuming www-data)
+            chown -R www-data:www-data "$FRONTEND_DIR"
+            find "$FRONTEND_DIR" -type d -exec chmod 755 {} \;
+            find "$FRONTEND_DIR" -type f -exec chmod 644 {} \;
+
+            # Cleanup
+            rm -f "$ZIP_PATH"

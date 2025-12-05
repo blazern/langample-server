@@ -21,7 +21,12 @@ jobs:
     uses: ./.github/workflows/run-ansible.yml
     secrets: inherit
 
-  deploy:
+  deploy-rust:
     needs: ansible
-    uses: ./.github/workflows/deploy-release.yml
+    uses: ./.github/workflows/deploy-rust.yml
+    secrets: inherit
+
+  deploy-js:
+    needs: ansible
+    uses: ./.github/workflows/deploy-js.yml
     secrets: inherit
